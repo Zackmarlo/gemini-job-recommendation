@@ -1,0 +1,7 @@
+fastapi
+openai
+uvicorn
+json_repair
+langchain
+pdfplumber
+python-multipart
