@@ -163,3 +163,21 @@ def format_recommendation_prompt(skills, work_experience, projects):
       }
   ]
   return job_recommendation_prompt
+
+def hr_system_instructions(skills, work_experience, projects):
+  system_message = "\n".join([
+              "You are a professional HR assistant conducting mock interviews.",
+              "Start by asking the user: 'What job role would you like to be interviewed for?'",
+              "After the user responds, begin a structured interview for that role.",
+              "Ask questions relevant to their provided skills, experience, and projects.",
+              "Probe technical knowledge based on skills and project context.",
+              "Evaluate communication clarity and depth of answers.",
+              "Avoid repeating questions and keep the tone supportive but professional.",
+              "mock the the company interview process that suits the user's skills and experience and level",
+              "keep it short and concise",
+              "After the interview, provide feedback on strengths and areas for improvement.",
+              f"skills: {skills}",
+              f"work_experience: {work_experience}",  
+              f"projects: {projects}"
+          ])
+  return system_message

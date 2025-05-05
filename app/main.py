@@ -2,9 +2,10 @@ from fastapi import FastAPI , HTTPException , UploadFile , File
 from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from google import genai
+from google.genai import types
 from pydantic import BaseModel
 from typing import List , Optional
-from prompt_scheme import format_resume_prompt , parse_json , format_recommendation_prompt
+from prompt_scheme import format_resume_prompt , parse_json , format_recommendation_prompt,hr_system_instructions
 from pdfloader import load_pdf
 from stream import stream_response
 
@@ -101,6 +102,9 @@ chatbot_client = genai.Client(api_key="AIzaSyDu1kwjv0yFUkBi7U62JYS3PCLcsBfoiG8")
 class chatRequest(BaseModel):
     user_message: str
     chat_history: Optional[List[dict]] = None
+    skills: List[dict]
+    work_experience: List[dict]
+    projects: List[dict]
 
 @app.post("/chat")
 def chat(messageinfo: chatRequest):
@@ -110,7 +114,17 @@ def chat(messageinfo: chatRequest):
             model = "gemini-2.0-flash",
             history=history
         )
-        response = chat.send_message_stream(messageinfo.user_message)
+
+        response = chat.send_message_stream(
+            messageinfo.user_message ,
+            config=types.GenerateContentConfig(
+                system_instruction=hr_system_instructions(
+                    messageinfo.skills,
+                    messageinfo.work_experience,
+                    messageinfo.projects
+                ),
+            )
+            )
         
         return StreamingResponse(
             stream_response(response),
