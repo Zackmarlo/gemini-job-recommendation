@@ -5,3 +5,5 @@ json_repair
 langchain
 pdfplumber
 python-multipart
+sentence_transformers
+google

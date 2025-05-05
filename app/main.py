@@ -1,10 +1,12 @@
 from fastapi import FastAPI , HTTPException , UploadFile , File
-import requests
+from fastapi.responses import StreamingResponse
 from openai import OpenAI
+from google import genai
 from pydantic import BaseModel
-from typing import List
+from typing import List , Optional
 from prompt_scheme import format_resume_prompt , parse_json , format_recommendation_prompt
 from pdfloader import load_pdf
+from stream import stream_response
 
 from sentence_transformers import SentenceTransformer, util
 from recomendersys import preprocess_text
@@ -92,3 +94,27 @@ def get_recommendations(data: JobRequest):
             for job, score in top_recommendations
         ]
     }
+
+
+chatbot_client = genai.Client(api_key="AIzaSyDu1kwjv0yFUkBi7U62JYS3PCLcsBfoiG8")
+
+class chatRequest(BaseModel):
+    user_message: str
+    chat_history: Optional[List[dict]] = None
+
+@app.post("/chat")
+def chat(messageinfo: chatRequest):
+    try:
+        history = messageinfo.chat_history
+        chat = chatbot_client.chats.create(
+            model = "gemini-2.0-flash",
+            history=history
+        )
+        response = chat.send_message_stream(messageinfo.user_message)
+        
+        return StreamingResponse(
+            stream_response(response),
+            media_type="text/event-stream",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

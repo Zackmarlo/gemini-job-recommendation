@@ -1,5 +1,4 @@
 import pdfplumber
-import tempfile
 
 def load_pdf(file_path):
     with pdfplumber.open(file_path) as pdf:
