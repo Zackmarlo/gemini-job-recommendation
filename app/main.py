@@ -8,13 +8,21 @@ from typing import List , Optional
 from prompt_scheme import format_resume_prompt , parse_json , format_recommendation_prompt,hr_system_instructions
 from pdfloader import load_pdf
 from stream import stream_response
+import whisper
+import shutil
+import os
+import tempfile
 
 from sentence_transformers import SentenceTransformer, util
 from recomendersys import preprocess_text
 
 app = FastAPI()
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model_recommender = SentenceTransformer('all-MiniLM-L6-v2')
+# Load Whisper model once
+model_whisper = whisper.load_model("base", device="cpu")  # Use "cuda" for GPU
+# Allowed file extensions
+ALLOWED_EXTENSIONS = [".mp3", ".wav"]
 
 
 client = OpenAI(
@@ -71,11 +79,11 @@ class JobRequest(BaseModel):
 def get_recommendations(data: JobRequest):
     # Preprocess user skills
     preprocessed_user_skills = preprocess_text(data.user_skills)
-    user_embedding = model.encode(preprocessed_user_skills, convert_to_tensor=True)
+    user_embedding = model_recommender.encode(preprocessed_user_skills, convert_to_tensor=True)
 
     # Encode job descriptions
     job_embeddings = {
-        job.title: model.encode(preprocess_text(job.description), convert_to_tensor=True)
+        job.title: model_recommender.encode(preprocess_text(job.description), convert_to_tensor=True)
         for job in data.job_descriptions
     }
 
@@ -132,3 +140,28 @@ def chat(messageinfo: chatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@app.post("/transcribe")
+async def transcribe(audio: UploadFile = File(...)):
+    # Validate file extension
+    ext = os.path.splitext(audio.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Only .mp3 and .wav files are allowed.")
+
+    # Save audio to temp file
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            shutil.copyfileobj(audio.file, tmp)
+            tmp_path = tmp.name
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save audio: {str(e)}")
+
+    # Transcribe
+    try:
+        result = model_whisper.transcribe(tmp_path)
+        os.remove(tmp_path)  # Cleanup
+        return {"transcription": result["text"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
