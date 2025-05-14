@@ -16,9 +16,17 @@ import requests
 
 from sentence_transformers import SentenceTransformer, util
 from recomendersys import preprocess_text
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 model_recommender = SentenceTransformer('all-MiniLM-L6-v2')
 # Load Whisper model once
 model_whisper = whisper.load_model("base", device="cpu")  # Use "cuda" for GPU
