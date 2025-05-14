@@ -12,6 +12,7 @@ import whisper
 import shutil
 import os
 import tempfile
+import requests
 
 from sentence_transformers import SentenceTransformer, util
 from recomendersys import preprocess_text
@@ -45,7 +46,10 @@ def parse_resume(resumefile: UploadFile = File(...)):
             messages=prompt,
         )
     response_data = parse_json(response.choices[0].message.content)
-    return response_data
+    requests.post(
+        "https://creative-endlessly-bullfrog.ngrok-free.app/api/ai/extract",
+        json=response_data
+    )
 
 class RecommendationRequest(BaseModel):
     skills: List[dict]
