@@ -1,13 +1,16 @@
 import streamlit as st
 import requests
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import os
 import tempfile
 import numpy as np
 import soundfile as sf
+import sqlite3
 
 # Backend API URL
 API_URL = "http://127.0.0.1:8000"  # Replace with your FastAPI backend URL
+cur = sqlite3.connect('unified_frontend.db').cursor()
+
+
 
 st.title("Unified Frontend for FastAPI Backend")
 
@@ -40,15 +43,23 @@ elif menu == "Extract Resume Data":
 elif menu == "Get Job Recommendations":
     st.header("Get Job Recommendations")
     
-    user_skills = st.text_area("Enter your skills (comma-separated):")
-    job_descs = st.text_area("Enter multiple job descriptions (JSON format):", height=200)
+    skills_data = cur.execute("SELECT skill_name FROM skills").fetchall()
+    user_skills = ", ".join(skill[0] for skill in skills_data)
+
+    job_descs_data = cur.execute("SELECT title, description FROM job_descriptions").fetchall()
+    job_descs = [{"title": job[0], "description": job[1]} for job in job_descs_data]
+    print(user_skills)
+    print(job_descs)
+
+    # user_skills = st.text_area("Enter your skills (comma-separated)", height=100)
+    # job_descs = st.text_area("Enter job descriptions (JSON format)", height=200,)
 
     if st.button("Get Recommendations"):
         try:
-            job_descriptions = eval(job_descs)  # Convert input to list of dicts
+            # job_descriptions = eval(job_descs)  # Convert input to list of dicts
             data = {
                 "user_skills": user_skills,
-                "job_descriptions": job_descriptions
+                "job_descriptions": job_descs
             }
             response = requests.post(f"{API_URL}/recomendersystem", json=data)
             if response.status_code == 200:
@@ -92,64 +103,7 @@ elif menu == "Chat with HR System":
             st.error("Invalid JSON format in input fields.")
 
 elif menu == "Transcribe Audio":
-    st.header("Transcribe Audio")
-
-    # Option 1: Record Audio
-
-    st.subheader("Record Audio")
-    webrtc_ctx = webrtc_streamer(
-        key="audio-recorder",
-        mode=WebRtcMode.SENDRECV,
-        media_stream_constraints={"audio": True, "video": False},
-        frontend_rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        server_rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-    )
-
-    if webrtc_ctx and webrtc_ctx.state.playing:
-        if webrtc_ctx.audio_receiver:
-            # Wait for audio frames to be collected
-            audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=30)
-            if len(audio_frames) > 0:
-                st.info("Processing audio...")
-
-                try:
-                    # Combine audio frames
-                    audio_data = b"".join(frame.planes[0].to_bytes() for frame in audio_frames)
-
-                    # Convert raw bytes to NumPy array
-                    audio_array = np.frombuffer(audio_data, dtype=np.int16)
-
-                    # Save to a .wav file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as audio_file:
-                        sample_rate = audio_frames[0].sample_rate  # Get the sample rate from the first frame
-                        sf.write(audio_file.name, audio_array, samplerate=sample_rate, subtype="PCM_16")
-                        audio_file_path = audio_file.name
-
-                    st.success("Audio recorded successfully!")
-                    st.audio(audio_file_path, format="audio/wav")
-
-                    # Transcribe the recorded audio
-                    st.write("Transcribing recorded audio...")
-                    with open(audio_file_path, "rb") as f:
-                        files = {"audio": f}
-                        response = requests.post(f"{API_URL}/transcribe", files=files)
-
-                    os.remove(audio_file_path)  # Clean up temporary file after use
-
-                    if response.status_code == 200:
-                        st.write("Transcription:")
-                        st.write(response.json().get("transcription"))
-                    else:
-                        st.error(f"Error: {response.json().get('detail', 'Unknown error')}")
-
-                except Exception as e:
-                    st.error(f"An error occurred: {str(e)}")
-            else:
-                st.warning("No audio frames detected. Please try recording again.")
-        else:
-            st.warning("Audio receiver is not initialized. Please start recording.")
-    else:
-        st.warning("WebRTC context is not active. Please start recording.")  
+    st.header("Transcribe Audio")  
            
     # Option 2: Upload Audio File
     st.subheader("Upload Audio File")
