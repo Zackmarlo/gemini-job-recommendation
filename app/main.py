@@ -90,23 +90,11 @@ def parse_resume(resumefile: UploadFile = File(...)):
 
 
 # === Pydantic Models ===
-class Skill(BaseModel):
-    name: str
-    level: Optional[str] = None
-
-class Experience(BaseModel):
-    company: str
-    role: str
-    duration: Optional[str] = None
-
-class Project(BaseModel):
-    name: str
-    description: Optional[str] = None
 
 class RecommendationRequest(BaseModel):
-    skills: List[Skill] = Field(..., min_items=1)
-    work_experience: List[Experience] = Field(..., min_items=1)
-    projects: List[Project] = Field(..., min_items=1)
+    skills: List[dict] = Field(..., min_items=1)
+    work_experience: List[dict] = Field(..., min_items=1)
+    projects: List[dict] = Field(..., min_items=1)
 
 class JobDescription(BaseModel):
     title: str = Field(..., min_length=1)
@@ -119,9 +107,9 @@ class JobRequest(BaseModel):
 class ChatRequest(BaseModel):
     user_message: str = Field(..., min_length=1)
     chat_history: Optional[List[dict]] = None
-    skills: List[Skill]
-    work_experience: List[Experience]
-    projects: List[Project]
+    skills: List[dict]
+    work_experience: List[dict]
+    projects: List[dict]
 
 
 @app.post("/recommend")
